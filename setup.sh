@@ -41,10 +41,21 @@ else
   npm install
 fi
 
-if [[ -x .venv/bin/python ]]; then
-  say ".venv present — skipping venv creation"
+venv_ok=0
+if [[ -x .venv/bin/python ]] \
+  && .venv/bin/python -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' 2>/dev/null; then
+  venv_ok=1
+fi
+
+if [[ "$venv_ok" == "1" ]]; then
+  say ".venv present ($(.venv/bin/python -V)) — skipping venv creation"
 else
-  say "Creating Python virtualenv at .venv"
+  if [[ -e .venv ]]; then
+    say "Rebuilding .venv (existing venv is on $(.venv/bin/python -V 2>/dev/null || echo 'unknown') — need >= 3.10)"
+    rm -rf .venv
+  else
+    say "Creating Python virtualenv at .venv"
+  fi
   "$PYTHON" -m venv .venv
 fi
 
