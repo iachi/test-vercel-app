@@ -58,5 +58,16 @@ say "FastAPI  -> http://localhost:8000  (pid $API_PID)"
 say "Ctrl-C to stop both."
 printf '\n'
 
-# If either child exits (crash or normal), tear the other down via the trap.
-wait -n
+# Wait until either child exits, then let the trap tear the other down.
+# (Using a poll loop instead of `wait -n` because macOS ships Bash 3.2.)
+while :; do
+  if ! kill -0 "$API_PID" 2>/dev/null; then
+    say "FastAPI exited"
+    break
+  fi
+  if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+    say "Next.js exited"
+    break
+  fi
+  sleep 1
+done
