@@ -14,14 +14,25 @@ need() {
 say "Checking required tools"
 need node
 need npm
-need python3
 need openssl
 
 node_major=$(node -p 'process.versions.node.split(".")[0]')
 [[ "$node_major" -ge 18 ]] || die "node >= 18 required (found $(node -v))"
 
-py_ok=$(python3 -c 'import sys; print(1 if sys.version_info >= (3,11) else 0)')
-[[ "$py_ok" == "1" ]] || die "python3 >= 3.11 required (found $(python3 -V))"
+# Find a Python >= 3.10 (PEP 604 union syntax is used in api/core/security.py).
+# Honor $PYTHON if set, else try 3.12 → 3.11 → 3.10 → plain python3.
+PYTHON="${PYTHON:-}"
+if [[ -z "$PYTHON" ]]; then
+  for candidate in python3.12 python3.11 python3.10 python3; do
+    if command -v "$candidate" >/dev/null 2>&1 \
+      && "$candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)' 2>/dev/null; then
+      PYTHON="$candidate"
+      break
+    fi
+  done
+fi
+[[ -n "$PYTHON" ]] || die "python >= 3.10 required — install python@3.12 (brew install python@3.12) and re-run"
+say "Using $($PYTHON -V) from $(command -v "$PYTHON")"
 
 if [[ -d node_modules ]]; then
   say "node_modules present — skipping npm install (delete it to force reinstall)"
@@ -34,7 +45,7 @@ if [[ -x .venv/bin/python ]]; then
   say ".venv present — skipping venv creation"
 else
   say "Creating Python virtualenv at .venv"
-  python3 -m venv .venv
+  "$PYTHON" -m venv .venv
 fi
 
 say "Installing Python dependencies"
