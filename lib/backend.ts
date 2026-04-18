@@ -17,6 +17,8 @@ export async function backendFetch(
 
   const headers = new Headers(init.headers);
   headers.set("X-Internal-Key", key);
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypass) headers.set("x-vercel-protection-bypass", bypass);
 
   const res = await fetch(url, { ...init, headers, cache: "no-store" });
   if (!res.ok) {
